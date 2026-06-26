@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNH&DD PGI 2.0 Performance Dashboard | Interactive Filters</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8edf5 100%);
+  color: #1a2332;
+  line-height: 1.55;
+  padding: 16px;
+  min-height: 100vh;
+}
+.container { max-width: 1600px; margin: 0 auto; }
+
+/* HEADER */
+.dashboard-header {
+  background: linear-gradient(135deg, #0d2e5c 0%, #1e4e9a 60%, #2e7dd1 100%);
+  color: white; padding: 26px 32px; border-radius: 16px; margin-bottom: 16px;
+  box-shadow: 0 10px 40px rgba(13,46,92,0.25); position: relative; overflow: hidden;
+}
+.dashboard-header::before {
+  content: ""; position: absolute; top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+.header-content { position: relative; z-index: 1; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+.header-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+.header-title .subtitle { font-size: 14px; opacity: 0.92; }
+.header-title .meta { font-size: 12px; opacity: 0.75; margin-top: 6px; }
+.header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  background: rgba(255,255,255,0.18); backdrop-filter: blur(10px);
+  padding: 6px 13px; border-radius: 18px; font-size: 12px; font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.badge.success { background: rgba(76,217,100,0.25); border-color: rgba(76,217,100,0.5); }
+
+/* FILTER BAR */
+.filter-bar {
+  background: white;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.04);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  position: sticky;
+  top: 8px;
+  z-index: 100;
+}
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-label { font-size: 11px; color: #5a6b85; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.filter-pill-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-pill {
+  padding: 7px 14px; border-radius: 18px; border: 1.5px solid #d6dce6; background: white;
+  cursor: pointer; font-size: 12.5px; font-weight: 500; color: #5a6b85;
+  transition: all 0.18s; user-select: none;
+}
+.filter-pill:hover { border-color: #2e7dd1; color: #1e4e9a; }
+.filter-pill.active { background: linear-gradient(135deg, #1e4e9a, #2e7dd1); color: white; border-color: #1e4e9a; box-shadow: 0 2px 6px rgba(30,78,154,0.3); }
+.filter-pill.active.danger { background: linear-gradient(135deg, #e74c3c, #ff6b6b); border-color: #c0392b; }
+.filter-pill.active.success { background: linear-gradient(135deg, #00a86b, #2ecc71); border-color: #00875a; }
+
+.filter-select {
+  padding: 8px 12px; border-radius: 8px; border: 1.5px solid #d6dce6; background: white;
+  font-size: 13px; color: #1a2332; min-width: 150px; cursor: pointer;
+  font-family: inherit;
+}
+.filter-select:focus { outline: none; border-color: #2e7dd1; }
+.filter-reset {
+  padding: 7px 14px; border-radius: 18px; background: #fef2f2; color: #c0392b;
+  border: 1.5px solid #fde2e2; cursor: pointer; font-size: 12.5px; font-weight: 600;
+  margin-left: auto;
+}
+.filter-reset:hover { background: #fde2e2; }
+.active-filters-strip {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+  padding-top: 10px; border-top: 1px dashed #e3e8ef; width: 100%;
+}
+.active-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 10px; background: #e6f0ff; color: #1e4e9a;
+  border-radius: 14px; font-size: 11.5px; font-weight: 600;
+}
+.active-filter-chip .x { cursor: pointer; opacity: 0.7; }
+.active-filter-chip .x:hover { opacity: 1; }
+
+/* TABS */
+.tabs {
+  display: flex; gap: 6px; background: white; padding: 6px;
+  border-radius: 12px; margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05); overflow-x: auto;
+}
+.tab-btn {
+  padding: 9px 18px; border: none; background: transparent; cursor: pointer;
+  border-radius: 8px; font-size: 13px; font-weight: 500; color: #5a6b85;
+  transition: all 0.2s; white-space: nowrap;
+}
+.tab-btn:hover { background: #f0f4f9; color: #1e4e9a; }
+.tab-btn.active { background: linear-gradient(135deg, #1e4e9a, #2e7dd1); color: white; box-shadow: 0 2px 8px rgba(30,78,154,0.3); }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* KPI CARDS */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.kpi-card {
+  background: white; border-radius: 14px; padding: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04);
+  position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+.kpi-card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+.kpi-card.primary::before { background: linear-gradient(180deg, #1e4e9a, #2e7dd1); }
+.kpi-card.success::before { background: linear-gradient(180deg, #00a86b, #2ecc71); }
+.kpi-card.warning::before { background: linear-gradient(180deg, #f39c12, #f1c40f); }
+.kpi-card.danger::before { background: linear-gradient(180deg, #e74c3c, #ff6b6b); }
+.kpi-card.info::before { background: linear-gradient(180deg, #6c5ce7, #a29bfe); }
+.kpi-label { font-size: 11px; color: #8395a7; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 600; margin-bottom: 8px; }
+.kpi-value { font-size: 28px; font-weight: 700; color: #1a2332; letter-spacing: -0.8px; line-height: 1.1; }
+.kpi-suffix { font-size: 13px; color: #5a6b85; font-weight: 500; margin-left: 3px; }
+.kpi-delta { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 10px; margin-top: 8px; }
+.kpi-delta.up { background: #d4f5e0; color: #00875a; }
+.kpi-delta.down { background: #fde2e2; color: #c0392b; }
+.kpi-delta.neutral { background: #e3e8ef; color: #5a6b85; }
+.kpi-subtext { font-size: 11.5px; color: #6b7a8f; margin-top: 5px; }
+
+/* PANEL */
+.panel { background: white; border-radius: 14px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04); margin-bottom: 16px; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.panel-title { font-size: 16px; font-weight: 700; color: #1a2332; }
+.panel-subtitle { font-size: 12px; color: #6b7a8f; font-weight: 400; margin-top: 2px; }
+.chart-container { position: relative; height: 340px; }
+.chart-container.tall { height: 420px; }
+.chart-container.short { height: 260px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+/* DOMAIN CARDS */
+.domain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.domain-card { background: white; border-radius: 12px; padding: 16px; border: 1px solid #e3e8ef; position: relative; transition: all 0.2s; }
+.domain-card:hover { border-color: #2e7dd1; box-shadow: 0 4px 16px rgba(46,125,209,0.12); }
+.domain-card.dimmed { opacity: 0.35; }
+.domain-card .domain-name { font-size: 12px; font-weight: 600; color: #1a2332; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.domain-card .domain-score-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+.domain-card .domain-score { font-size: 26px; font-weight: 700; color: #1a2332; }
+.domain-card .domain-max { font-size: 13px; color: #8395a7; }
+.progress-bar { width: 100%; height: 7px; background: #eef2f7; border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.progress-fill.high { background: linear-gradient(90deg, #00a86b, #2ecc71); }
+.progress-fill.medium { background: linear-gradient(90deg, #f39c12, #f1c40f); }
+.progress-fill.low { background: linear-gradient(90deg, #e74c3c, #ff6b6b); }
+.domain-card .grade-pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+.domain-card .domain-trend { font-size: 11.5px; color: #6b7a8f; margin-top: 6px; display: flex; justify-content: space-between; }
+.trend-up { color: #00875a; font-weight: 600; }
+.trend-down { color: #c0392b; font-weight: 600; }
+.trend-flat { color: #6b7a8f; font-weight: 600; }
+
+/* GRADES */
+.grade-utkarsh { background: #ffb3ba; color: #6e1f25; }
+.grade-uttam1 { background: #b8d68c; color: #4a6c1a; }
+.grade-uttam2 { background: #d6cb8c; color: #6c5d1a; }
+.grade-uttam3 { background: #cdb4db; color: #4a2a6e; }
+.grade-prachesta1 { background: #b3d0ff; color: #1e3a72; }
+.grade-prachesta2 { background: #5c9eff; color: #ffffff; }
+.grade-prachesta3 { background: #95d5b2; color: #1b5e20; }
+.grade-akanshi1 { background: #4a9b4e; color: white; }
+.grade-akanshi2 { background: #ffd54f; color: #6b4f00; }
+.grade-akanshi3 { background: #ef5350; color: white; }
+
+/* INSIGHT CARDS */
+.insight-card { padding: 13px 15px; border-radius: 10px; margin-bottom: 9px; border-left: 4px solid; background: #fafbfc; }
+.insight-card.strength { border-color: #00a86b; background: #ecfdf5; }
+.insight-card.opportunity { border-color: #f39c12; background: #fff8e7; }
+.insight-card.risk { border-color: #e74c3c; background: #fef2f2; }
+.insight-card.win { border-color: #6c5ce7; background: #f0eafd; }
+.insight-card h4 { font-size: 13px; font-weight: 700; color: #1a2332; margin-bottom: 4px; }
+.insight-card p { font-size: 12.5px; color: #4a5870; line-height: 1.5; }
+
+/* TABLE */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { background: #f0f4f9; padding: 9px 11px; text-align: left; font-weight: 600; color: #4a5870; border-bottom: 2px solid #e3e8ef; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer; user-select: none; }
+.data-table th:hover { background: #e3e8ef; }
+.data-table th.sortable::after { content: ' ⇅'; opacity: 0.4; font-size: 10px; }
+.data-table th.sort-asc::after { content: ' ▲'; opacity: 1; color: #1e4e9a; }
+.data-table th.sort-desc::after { content: ' ▼'; opacity: 1; color: #1e4e9a; }
+.data-table td { padding: 9px 11px; border-bottom: 1px solid #eef2f7; color: #1a2332; }
+.data-table tr:hover td { background: #f8fafc; }
+.data-table tr.highlight td { background: #fff8e1; font-weight: 600; }
+.data-table tr.highlight td:first-child { color: #1e4e9a; }
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.rank-badge { display: inline-block; width: 25px; height: 25px; line-height: 25px; text-align: center; border-radius: 50%; font-weight: 700; font-size: 11.5px; }
+.rank-1 { background: linear-gradient(135deg, #ffd700, #ff9800); color: white; }
+.rank-2 { background: linear-gradient(135deg, #c0c0c0, #9e9e9e); color: white; }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #b87333); color: white; }
+.rank-other { background: #e3e8ef; color: #4a5870; }
+
+/* COMPARISON BAR */
+.comparison-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.comparison-name { flex: 0 0 110px; font-size: 12.5px; font-weight: 500; color: #4a5870; }
+.comparison-bar-container { flex: 1; height: 22px; background: #f0f4f9; border-radius: 11px; overflow: hidden; position: relative; }
+.comparison-bar { height: 100%; border-radius: 11px; display: flex; align-items: center; padding-right: 8px; justify-content: flex-end; font-size: 11px; color: white; font-weight: 600; transition: width 0.8s ease; }
+.comparison-bar.dnhdd { background: linear-gradient(90deg, #1e4e9a, #2e7dd1); }
+.comparison-value { flex: 0 0 95px; text-align: right; font-weight: 700; font-size: 13px; color: #1a2332; }
+
+/* JOURNEY */
+.journey-container { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; position: relative; flex-wrap: wrap; gap: 14px; }
+.journey-step { flex: 1; min-width: 140px; text-align: center; position: relative; z-index: 2; }
+.journey-step .year { font-size: 11px; color: #6b7a8f; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; }
+.journey-step .score-circle { width: 76px; height: 76px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 8px; color: white; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.journey-step .score-circle .score-num { font-size: 20px; }
+.journey-step .score-circle .score-sub { font-size: 10px; opacity: 0.9; }
+.journey-step .grade-label { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; display: inline-block; }
+.journey-step .rank-label { font-size: 11px; color: #6b7a8f; margin-top: 3px; }
+.journey-arrow { flex: 0 0 48px; text-align: center; font-size: 22px; color: #b3d0ff; }
+.journey-arrow.up { color: #00a86b; }
+
+/* RECOMMENDATIONS */
+.recommendations { list-style: none; }
+.recommendations li { padding: 11px 14px; margin-bottom: 7px; background: #f8fafc; border-radius: 10px; font-size: 12.5px; color: #1a2332; line-height: 1.5; border-left: 3px solid #2e7dd1; }
+.recommendations li strong { color: #1e4e9a; }
+
+/* CHECKBOX FILTER */
+.checkbox-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.checkbox-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 14px; background: #f0f4f9; border: 1.5px solid #d6dce6; cursor: pointer; font-size: 12px; user-select: none; transition: all 0.18s; color: #5a6b85; font-weight: 500; }
+.checkbox-pill input { display: none; }
+.checkbox-pill.checked { background: #e6f0ff; border-color: #2e7dd1; color: #1e4e9a; font-weight: 600; }
+.checkbox-pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #1e4e9a; }
+
+/* TOP SEARCH */
+.search-box { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border: 1.5px solid #d6dce6; border-radius: 18px; font-size: 13px; min-width: 200px; }
+.search-box input { border: none; outline: none; flex: 1; font-family: inherit; font-size: 13px; color: #1a2332; }
+.search-box input::placeholder { color: #a4b0c0; }
+
+/* FOOTER */
+.footer { text-align: center; padding: 18px; color: #8395a7; font-size: 11.5px; margin-top: 16px; }
+.section-divider { text-align: center; margin: 18px 0 12px; }
+.section-divider h2 { font-size: 13px; font-weight: 700; color: #5a6b85; text-transform: uppercase; letter-spacing: 1.2px; }
+.section-divider .line { height: 2px; width: 60px; background: linear-gradient(90deg, transparent, #2e7dd1, transparent); margin: 6px auto; }
+
+.empty-state { padding: 40px; text-align: center; color: #8395a7; font-size: 13px; }
+
+@media (max-width: 768px) {
+  body { padding: 10px; }
+  .filter-bar { position: relative; top: 0; }
+  .header-title h1 { font-size: 20px; }
+  .kpi-value { font-size: 24px; }
+}
+
+.range-display { font-size: 11.5px; color: #5a6b85; font-weight: 600; margin-left: 6px; }
+input[type="range"] { width: 140px; accent-color: #2e7dd1; }
+.filter-row-toggle { padding: 4px 10px; background: #e6f0ff; color: #1e4e9a; border: none; border-radius: 10px; font-size: 11px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="dashboard-header">
+  <div class="header-content">
+    <div class="header-top">
+      <div class="header-title">
+        <h1>🎓 PGI 2.0 Performance Dashboard</h1>
+        <div class="subtitle">Dadra and Nagar Haveli &amp; Daman and Diu (DNH&amp;DD) · School Education Performance</div>
+        <div class="meta">Source: Ministry of Education, GoI · 2022-23, 2023-24, 2024-25 brochures · <em>Interactive — use filters below</em></div>
+      </div>
+      <div class="header-badges">
+        <span class="badge success">⬆ PRACHESTA-2 (FY25)</span>
+        <span class="badge">🏆 National Rank #4</span>
+        <span class="badge">📈 +96.6 pts in 3 yrs</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GLOBAL FILTER BAR -->
+<div class="filter-bar">
+
+  <div class="filter-group">
+    <div class="filter-label">Focus Year</div>
+    <div class="filter-pill-group" id="filterYear">
+      <div class="filter-pill" data-val="2022-23">2022-23</div>
+      <div class="filter-pill" data-val="2023-24">2023-24</div>
+      <div class="filter-pill active" data-val="2024-25">2024-25</div>
+      <div class="filter-pill" data-val="all">All Years</div>
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <div class="filter-label">View Mode</div>
+    <div class="filter-pill-group" id="filterViewMode">
+      <div class="filter-pill active" data-val="absolute">Absolute Score</div>
+      <div class="filter-pill" data-val="optimal">% of Optimal</div>
+      <div class="filter-pill" data-val="yoy">YoY Change</div>
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <div class="filter-label">Compare With</div>
+    <div class="checkbox-group" id="filterStates">
+      <label class="checkbox-pill checked" data-state="Chandigarh"><span class="dot" style="background:#ff9800"></span>Chandigarh</label>
+      <label class="checkbox-pill checked" data-state="Punjab"><span class="dot" style="background:#6c5ce7"></span>Punjab</label>
+      <label class="checkbox-pill checked" data-state="Kerala"><span class="dot" style="background:#00a86b"></span>Kerala</label>
+      <label class="checkbox-pill" data-state="Delhi"><span class="dot" style="background:#e74c3c"></span>Delhi</label>
+      <label class="checkbox-pill" data-state="Maharashtra"><span class="dot" style="background:#0abde3"></span>Maharashtra</label>
+      <label class="checkbox-pill" data-state="Himachal Pradesh"><span class="dot" style="background:#feca57"></span>HP</label>
+      <label class="checkbox-pill" data-state="Odisha"><span class="dot" style="background:#ee5a6f"></span>Odisha</label>
+      <label class="checkbox-pill checked" data-state="National Avg"><span class="dot" style="background:#8395a7"></span>Nat'l Avg</label>
+    </div>
+  </div>
+
+  <button class="filter-reset" onclick="resetAllFilters()">↻ Reset Filters</button>
+
+  <div class="active-filters-strip" id="activeFiltersStrip"></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab(event,'overview')">📊 Overview</button>
+  <button class="tab-btn" onclick="switchTab(event,'trends')">📈 Historic Trends</button>
+  <button class="tab-btn" onclick="switchTab(event,'domains')">🎯 Domain Analysis</button>
+  <button class="tab-btn" onclick="switchTab(event,'comparison')">🆚 State Comparison</button>
+  <button class="tab-btn" onclick="switchTab(event,'gaps')">🔍 Gap Analysis</button>
+  <button class="tab-btn" onclick="switchTab(event,'insights')">💡 Insights &amp; Focus</button>
+</div>
+
+<!-- TAB 1: OVERVIEW -->
+<div class="tab-content active" id="tab-overview">
+  <div class="kpi-grid" id="kpiGridOverview"></div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">🚀 3-Year Performance Journey</div>
+        <div class="panel-subtitle" id="journeySubtitle">DNH&amp;DD score, grade, and rank progression</div>
+      </div>
+    </div>
+    <div class="journey-container" id="journeyContainer"></div>
+  </div>
+
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">📈 Overall Score Trend</div>
+          <div class="panel-subtitle">DNH&amp;DD vs selected comparison states</div>
+        </div>
+      </div>
+      <div class="chart-container"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🏆 Top 8 States <span id="topStatesYr">(2024-25)</span></div>
+          <div class="panel-subtitle">National ranking snapshot</div>
+        </div>
+      </div>
+      <table class="data-table" id="topStatesTable"></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">🎯 Domain-wise Snapshot <span id="domainSnapshotYr">(2024-25)</span></div>
+        <div class="panel-subtitle">DNH&amp;DD performance across the six PGI 2.0 domains · use Domain filters below to focus</div>
+      </div>
+      <div class="checkbox-group" id="filterDomains" style="margin-bottom: 6px;"></div>
+    </div>
+    <div class="domain-grid" id="domainGrid"></div>
+  </div>
+</div>
+
+<!-- TAB 2: HISTORIC TRENDS -->
+<div class="tab-content" id="tab-trends">
+  <div class="kpi-grid" id="kpiGridTrends"></div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📈 Multi-State Score Trend (3-Year)</div>
+        <div class="panel-subtitle">Selected states from filter · toggle on the "Compare With" filter to see more</div>
+      </div>
+    </div>
+    <div class="chart-container tall"><canvas id="trendComparisonChart"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🔁 Domain YoY Change for DNH&amp;DD</div>
+          <div class="panel-subtitle">Active domains only</div>
+        </div>
+      </div>
+      <div class="chart-container"><canvas id="domainYoYChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🏃 Top Improvers (FY24 → FY25)</div>
+          <div class="panel-subtitle">Min improvement: <span id="improverMinVal">0</span> pts</div>
+        </div>
+        <input type="range" id="improverMin" min="-50" max="100" value="0" step="5" oninput="updateImprovers()">
+      </div>
+      <div class="chart-container"><canvas id="improversChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📋 Year-over-Year Detailed Table</div>
+        <div class="panel-subtitle">DNH&amp;DD metrics across all years</div>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th class="num">2022-23</th>
+          <th class="num">2023-24</th>
+          <th class="num">2024-25</th>
+          <th class="num">3-Year Δ</th>
+          <th class="num">% Growth</th>
+        </tr>
+      </thead>
+      <tbody id="yoyTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 3: DOMAIN ANALYSIS -->
+<div class="tab-content" id="tab-domains">
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🕸 Domain Performance Radar</div>
+          <div class="panel-subtitle">% optimal achieved per domain · across years</div>
+        </div>
+        <div class="filter-pill-group" id="filterRadarYears">
+          <div class="filter-pill active" data-val="2022-23">22-23</div>
+          <div class="filter-pill active" data-val="2023-24">23-24</div>
+          <div class="filter-pill active" data-val="2024-25">24-25</div>
+        </div>
+      </div>
+      <div class="chart-container tall"><canvas id="radarChart"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">📊 Domain Score Evolution</div>
+          <div class="panel-subtitle">Active domains shown · respects view-mode filter</div>
+        </div>
+      </div>
+      <div class="chart-container tall"><canvas id="domainEvolutionChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">🎯 Domain Deep Dive</div>
+        <div class="panel-subtitle">Sortable · click column headers</div>
+      </div>
+    </div>
+    <table class="data-table" id="domainTable">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort-key="name">Domain</th>
+          <th class="num sortable" data-sort-key="max">Max</th>
+          <th class="num sortable" data-sort-key="2022-23">2022-23</th>
+          <th class="num sortable" data-sort-key="2023-24">2023-24</th>
+          <th class="num sortable sort-desc" data-sort-key="2024-25">2024-25</th>
+          <th class="num sortable" data-sort-key="yoy">YoY %</th>
+          <th class="num sortable" data-sort-key="pct">% Optimal</th>
+          <th>Grade (FY25)</th>
+        </tr>
+      </thead>
+      <tbody id="domainTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📏 Domain Performance vs Optimum</div>
+        <div class="panel-subtitle">Bar shows % of maximum achieved · respects active domain filters</div>
+      </div>
+    </div>
+    <div id="domainBarComparisons"></div>
+  </div>
+</div>
+
+<!-- TAB 4: STATE COMPARISON -->
+<div class="tab-content" id="tab-comparison">
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">🆚 DNH&amp;DD vs Comparison States: Domain Breakdown</div>
+        <div class="panel-subtitle">Use "Compare With" filter above &amp; domain filters here</div>
+      </div>
+    </div>
+    <div class="chart-container tall"><canvas id="stateCompareChart"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🕸 Multi-State Radar</div>
+          <div class="panel-subtitle">% of max per domain · DNH&amp;DD vs selected states</div>
+        </div>
+      </div>
+      <div class="chart-container tall"><canvas id="multiRadar"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🥇 Domain Leadership</div>
+          <div class="panel-subtitle">DNH&amp;DD's rank among comparison states</div>
+        </div>
+      </div>
+      <div id="leadership"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📋 Full State Ranking Table</div>
+        <div class="panel-subtitle">All 36 States/UTs · use filters below</div>
+      </div>
+    </div>
+
+    <!-- Sub-filters for ranking table -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 10px 0; align-items: flex-end; border-bottom: 1px dashed #e3e8ef; margin-bottom: 10px;">
+      <div class="filter-group">
+        <div class="filter-label">Region</div>
+        <select class="filter-select" id="filterRegion" onchange="renderRanking()">
+          <option value="all">All Regions</option>
+          <option value="North">North</option>
+          <option value="South">South</option>
+          <option value="East">East</option>
+          <option value="West">West</option>
+          <option value="North-East">North-East</option>
+          <option value="Central">Central</option>
+          <option value="Islands">Islands</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Grade Band</div>
+        <select class="filter-select" id="filterGrade" onchange="renderRanking()">
+          <option value="all">All Grades</option>
+          <option value="PRACHESTA-1">PRACHESTA-1</option>
+          <option value="PRACHESTA-2">PRACHESTA-2</option>
+          <option value="PRACHESTA-3">PRACHESTA-3</option>
+          <option value="AKANSHI-1">AKANSHI-1</option>
+          <option value="AKANSHI-2">AKANSHI-2</option>
+          <option value="AKANSHI-3">AKANSHI-3</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Improvement</div>
+        <div class="filter-pill-group" id="filterImpr">
+          <div class="filter-pill active" data-val="all">All</div>
+          <div class="filter-pill" data-val="up">Improved ⬆</div>
+          <div class="filter-pill" data-val="down">Declined ⬇</div>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Score Range (FY25)</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="range" id="scoreMin" min="400" max="800" value="400" step="10" oninput="renderRanking()">
+          <span class="range-display" id="scoreMinDisplay">400</span>
+          <span class="range-display">to</span>
+          <input type="range" id="scoreMax" min="400" max="800" value="800" step="10" oninput="renderRanking()">
+          <span class="range-display" id="scoreMaxDisplay">800</span>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-label">Search</div>
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="searchState" placeholder="Search state..." oninput="renderRanking()">
+        </div>
+      </div>
+
+      <div style="margin-left:auto;font-size:11.5px;color:#5a6b85;" id="rankingCount">36 states shown</div>
+    </div>
+
+    <div style="max-height:540px;overflow-y:auto;">
+    <table class="data-table" id="rankingTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="sortable" data-sort-key="state">State/UT</th>
+          <th>Region</th>
+          <th class="num sortable sort-desc" data-sort-key="score25">FY25 Score</th>
+          <th class="num sortable" data-sort-key="score24">FY24 Score</th>
+          <th class="num sortable" data-sort-key="delta">Δ</th>
+          <th>FY25 Grade</th>
+        </tr>
+      </thead>
+      <tbody id="rankingBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: GAP ANALYSIS -->
+<div class="tab-content" id="tab-gaps">
+  <div class="kpi-grid" id="kpiGridGaps"></div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">📏 Domain-wise Gap to Optimum</div>
+        <div class="panel-subtitle">Active domains shown · stacked bar = achieved + gap</div>
+      </div>
+    </div>
+    <div class="chart-container tall"><canvas id="gapChart"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">🚦 Grade-wise Position Ladder</div>
+          <div class="panel-subtitle">All 10 grade tiers · DNH&amp;DD highlighted</div>
+        </div>
+      </div>
+      <div id="gradeLadder"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">📍 Closing the Gap</div>
+          <div class="panel-subtitle">Target scenarios for next year</div>
+        </div>
+      </div>
+      <div class="insight-card win">
+        <h4>🎯 To Reach PRACHESTA-1 (Score ≥ 701)</h4>
+        <p>DNH&amp;DD needs <strong>+17.8 points</strong>, achievable by lifting Learning Outcomes (LO) from 100 → 120.</p>
+      </div>
+      <div class="insight-card win">
+        <h4>🏆 To Enter Top 3 (Beat Kerala 687.7)</h4>
+        <p>Need <strong>+4.6 points</strong>. Small gains in LO or GP push DNH&amp;DD into bronze.</p>
+      </div>
+      <div class="insight-card opportunity">
+        <h4>📈 To Match Topper (Chandigarh 739.1)</h4>
+        <p>Need <strong>+55.9 points</strong>. Biggest delta is in LO (Chandigarh 110.6 vs DNH&amp;DD 100.0) and GP.</p>
+      </div>
+      <div class="insight-card opportunity">
+        <h4>🌟 To Achieve UTKARSH (Score ≥ 941)</h4>
+        <p>Need <strong>+257.8 points</strong>. Multi-year aspirational goal.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 6: INSIGHTS -->
+<div class="tab-content" id="tab-insights">
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+    <span style="font-size:11.5px;font-weight:700;color:#5a6b85;text-transform:uppercase;letter-spacing:0.5px;">Filter Insights:</span>
+    <div class="filter-pill-group" id="filterInsightType">
+      <div class="filter-pill active" data-val="all">All</div>
+      <div class="filter-pill" data-val="strength">✅ Strengths</div>
+      <div class="filter-pill" data-val="opportunity">🟡 Opportunities</div>
+      <div class="filter-pill" data-val="risk">🔴 Risks</div>
+      <div class="filter-pill" data-val="win">🚀 Wins</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">✅ Achievements &amp; Strengths</div></div>
+      <div id="insightsLeft"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">⚠️ Focus Areas &amp; Risks</div></div>
+      <div id="insightsRight"></div>
+    </div>
+  </div>
+
+  <div class="section-divider"><h2>📋 STRATEGIC RECOMMENDATIONS</h2><div class="line"></div></div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">🧭 Priority Action Plan for 2025-26</div>
+        <div class="panel-subtitle">Target: PRACHESTA-1 grade and top-3 nationally</div>
+      </div>
+    </div>
+    <ul class="recommendations">
+      <li>🎯 <strong>Priority #1 — Learning Outcomes (LO):</strong> Set target LO 130+ in 2025-26 (current 100). Focus on FLN saturation (G1-3), math/science teacher upskilling (G6-9), rigorous PARAKH sample prep. Even +30 LO points = grade upgrade.</li>
+      <li>🏛️ <strong>Priority #2 — Governance Processes (GP):</strong> Digital attendance to 100%, on-time PRABANDH fund releases (&lt;30 days), triple Vidyanjali registrations. Target GP 90+.</li>
+      <li>👩‍🏫 <strong>Priority #3 — Teacher Education (TE&amp;T):</strong> Arrest the decline. Audit minimum qualifications, accelerate Nishtha 4.0/5.0, ensure DIETs fully staffed. Restore UTKARSH/UTTAM-1.</li>
+      <li>🏫 <strong>Maintain Equity Leadership:</strong> Track gender parity, CWSN integration, SC/ST/Minority outcomes monthly.</li>
+      <li>📊 <strong>Establish PGI War-Room:</strong> Monthly review of all 70 indicators with district dashboards. Assign owners to 15-20 indicators with largest gaps.</li>
+      <li>🔗 <strong>Benchmarking Visits:</strong> Send delegations to Chandigarh, Punjab, Kerala for cross-learning.</li>
+      <li>📈 <strong>Stretch Target:</strong> PGI 720+ in 2025-26 (PRACHESTA-1, top-3). Needs +37 pts — well within reach given +91 this year.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">
+  Source: <strong>PGI 2.0 Brochures, Ministry of Education, Department of School Education &amp; Literacy, Government of India</strong> · 2022-23, 2023-24, 2024-25 editions<br>
+  PGI 2.0 indicator count changed from 73 (2022-24) to 70 (2024-25); YoY comparisons reflect official aggregated scores from each edition.
+</div>
+</div>
+
+<script>
+// =====================================================
+// DATA
+// =====================================================
+const DNHDD = {
+  scores: { '2022-23': 586.6, '2023-24': 592.2, '2024-25': 683.2 },
+  ranks:  { '2022-23': 6,     '2023-24': 7,     '2024-25': 4 },
+  grades: { '2022-23': 'PRACHESTA-3', '2023-24': 'PRACHESTA-3', '2024-25': 'PRACHESTA-2' },
+  domains: {
+    'Learning Outcomes (LO)':                 { max:240, '2022-23':42.7,  '2023-24':42.7,  '2024-25':100.0, grade:'PRACHESTA-2', short:'LO',   key:'LO'  },
+    'Access (A)':                              { max:80,  '2022-23':62.0,  '2023-24':58.6,  '2024-25':66.1,  grade:'UTTAM-1',    short:'Access', key:'A'  },
+    'Infrastructure & Facilities (I&F)':       { max:190, '2022-23':109.4, '2023-24':120.9, '2024-25':127.6, grade:'UTTAM-3',    short:'I&F',  key:'IF' },
+    'Equity (E)':                              { max:260, '2022-23':229.3, '2023-24':230.6, '2024-25':233.5, grade:'UTTAM-1',    short:'Equity', key:'E' },
+    'Governance Processes (GP)':               { max:130, '2022-23':63.0,  '2023-24':56.9,  '2024-25':76.6,  grade:'PRACHESTA-1',short:'GP',   key:'GP' },
+    'Teacher Education & Training (TE&T)':     { max:100, '2022-23':80.2,  '2023-24':82.6,  '2024-25':79.4,  grade:'UTTAM-2',    short:'TE&T', key:'TET'}
+  }
+};
+
+const NATIONAL_AVG = { '2022-23': 536.2, '2023-24': 545.3, '2024-25': 587.1 };
+
+const STATE_SCORES = {
+  'Andaman & Nicobar Islands': {'2022-23':606.4,'2023-24':562.9,'2024-25':604.5,grade25:'PRACHESTA-3',region:'Islands'},
+  'Andhra Pradesh':            {'2022-23':544.4,'2023-24':562.2,'2024-25':578.1,grade25:'AKANSHI-1',region:'South'},
+  'Arunachal Pradesh':         {'2022-23':439.6,'2023-24':461.4,'2024-25':527,  grade25:'AKANSHI-1',region:'North-East'},
+  'Assam':                     {'2022-23':498.8,'2023-24':511.5,'2024-25':593.6,grade25:'PRACHESTA-3',region:'North-East'},
+  'Bihar':                     {'2022-23':484.1,'2023-24':472,  '2024-25':507,  grade25:'AKANSHI-2',region:'East'},
+  'Chandigarh':                {'2022-23':687.8,'2023-24':703,  '2024-25':739.1,grade25:'PRACHESTA-1',region:'North'},
+  'Chhattisgarh':              {'2022-23':533.2,'2023-24':494.6,'2024-25':570.7,grade25:'AKANSHI-1',region:'Central'},
+  'DNH&DD':                    {'2022-23':586.6,'2023-24':592.2,'2024-25':683.2,grade25:'PRACHESTA-2',region:'West'},
+  'Delhi':                     {'2022-23':579.3,'2023-24':623.7,'2024-25':675.5,grade25:'PRACHESTA-2',region:'North'},
+  'Goa':                       {'2022-23':581.3,'2023-24':589.7,'2024-25':613.2,grade25:'PRACHESTA-3',region:'West'},
+  'Gujarat':                   {'2022-23':602.2,'2023-24':614.4,'2024-25':582.9,grade25:'PRACHESTA-3',region:'West'},
+  'Haryana':                   {'2022-23':550.4,'2023-24':591.4,'2024-25':587.1,grade25:'PRACHESTA-3',region:'North'},
+  'Himachal Pradesh':          {'2022-23':532.8,'2023-24':573.8,'2024-25':659.2,grade25:'PRACHESTA-2',region:'North'},
+  'Jammu & Kashmir':           {'2022-23':493.6,'2023-24':527.3,'2024-25':500.2,grade25:'AKANSHI-2',region:'North'},
+  'Jharkhand':                 {'2022-23':506.3,'2023-24':502.2,'2024-25':531.1,grade25:'AKANSHI-1',region:'East'},
+  'Karnataka':                 {'2022-23':562,  '2023-24':549.6,'2024-25':558.1,grade25:'AKANSHI-1',region:'South'},
+  'Kerala':                    {'2022-23':601.9,'2023-24':594.2,'2024-25':687.7,grade25:'PRACHESTA-2',region:'South'},
+  'Ladakh':                    {'2022-23':526.7,'2023-24':520.6,'2024-25':549.1,grade25:'AKANSHI-1',region:'North'},
+  'Lakshadweep':               {'2022-23':574.6,'2023-24':541.8,'2024-25':587.7,grade25:'PRACHESTA-3',region:'Islands'},
+  'Madhya Pradesh':            {'2022-23':508.9,'2023-24':532.8,'2024-25':574.1,grade25:'AKANSHI-1',region:'Central'},
+  'Maharashtra':               {'2022-23':553.7,'2023-24':582,  '2024-25':649.8,grade25:'PRACHESTA-2',region:'West'},
+  'Manipur':                   {'2022-23':489.3,'2023-24':497.3,'2024-25':557,  grade25:'AKANSHI-1',region:'North-East'},
+  'Meghalaya':                 {'2022-23':401.6,'2023-24':417.9,'2024-25':448,  grade25:'AKANSHI-3',region:'North-East'},
+  'Mizoram':                   {'2022-23':471.6,'2023-24':464.3,'2024-25':507.9,grade25:'AKANSHI-2',region:'North-East'},
+  'Nagaland':                  {'2022-23':446.4,'2023-24':468.6,'2024-25':536.6,grade25:'AKANSHI-1',region:'North-East'},
+  'Odisha':                    {'2022-23':584.5,'2023-24':595.6,'2024-25':655.2,grade25:'PRACHESTA-2',region:'East'},
+  'Puducherry':                {'2022-23':541.7,'2023-24':578.4,'2024-25':575,  grade25:'AKANSHI-1',region:'South'},
+  'Punjab':                    {'2022-23':614.1,'2023-24':631.2,'2024-25':709.1,grade25:'PRACHESTA-1',region:'North'},
+  'Rajasthan':                 {'2022-23':549.5,'2023-24':581.5,'2024-25':578.6,grade25:'AKANSHI-1',region:'North'},
+  'Sikkim':                    {'2022-23':527.9,'2023-24':531.9,'2024-25':603.3,grade25:'PRACHESTA-3',region:'North-East'},
+  'Tamil Nadu':                {'2022-23':563.7,'2023-24':559.2,'2024-25':582.4,grade25:'PRACHESTA-3',region:'South'},
+  'Telangana':                 {'2022-23':489.3,'2023-24':511.9,'2024-25':552.2,grade25:'AKANSHI-1',region:'South'},
+  'Tripura':                   {'2022-23':484.3,'2023-24':500.4,'2024-25':559,  grade25:'AKANSHI-1',region:'North-East'},
+  'Uttar Pradesh':             {'2022-23':499.8,'2023-24':528.1,'2024-25':569.1,grade25:'AKANSHI-1',region:'Central'},
+  'Uttarakhand':               {'2022-23':538.2,'2023-24':526.3,'2024-25':584.5,grade25:'PRACHESTA-3',region:'North'},
+  'West Bengal':               {'2022-23':547.8,'2023-24':533.8,'2024-25':557.1,grade25:'AKANSHI-1',region:'East'}
+};
+
+const STATE_DOMAINS_2425 = {
+  'Chandigarh':       { LO:110.6, A:72.5, IF:147.5, E:239.8, GP:83.2, TET:85.5 },
+  'Punjab':           { LO:150.4, A:67.9, IF:112.5, E:230.6, GP:79.1, TET:68.6 },
+  'Kerala':           { LO:140.3, A:75.3, IF:110.3, E:223.2, GP:52.8, TET:85.8 },
+  'DNH&DD':           { LO:100.0, A:66.1, IF:127.6, E:233.5, GP:76.6, TET:79.4 },
+  'Delhi':            { LO:94.5,  A:66.3, IF:123.0, E:245.0, GP:62.3, TET:84.4 },
+  'Maharashtra':      { LO:102.8, A:67.5, IF:92.1,  E:232.9, GP:81.7, TET:72.8 },
+  'Himachal Pradesh': { LO:117.9, A:69.3, IF:110.5, E:235.3, GP:45.9, TET:80.3 },
+  'Odisha':           { LO:99.3,  A:66.3, IF:108.6, E:228.0, GP:79.6, TET:73.4 },
+  'National Avg':     { LO:79.2,  A:60.6, IF:91.0,  E:222.4, GP:53.1, TET:69.1 }  // computed from Annexure-2
+};
+
+const IMPROVERS_DATA = [];
+Object.entries(STATE_SCORES).forEach(([s, d]) => {
+  IMPROVERS_DATA.push([s, d['2024-25'] - d['2023-24']]);
+});
+IMPROVERS_DATA.sort((a,b) => b[1] - a[1]);
+
+const STATE_COLORS = {
+  'DNH&DD':'#1e4e9a', 'Chandigarh':'#ff9800', 'Punjab':'#6c5ce7', 'Kerala':'#00a86b',
+  'Delhi':'#e74c3c', 'Maharashtra':'#0abde3', 'Himachal Pradesh':'#feca57',
+  'Odisha':'#ee5a6f', 'National Avg':'#8395a7'
+};
+
+const GRADE_CLASS = {
+  'UTKARSH':'grade-utkarsh','UTTAM-1':'grade-uttam1','UTTAM-2':'grade-uttam2','UTTAM-3':'grade-uttam3',
+  'PRACHESTA-1':'grade-prachesta1','PRACHESTA-2':'grade-prachesta2','PRACHESTA-3':'grade-prachesta3',
+  'AKANSHI-1':'grade-akanshi1','AKANSHI-2':'grade-akanshi2','AKANSHI-3':'grade-akanshi3'
+};
+
+const INSIGHTS_DATA = {
+  left: [
+    {type:'strength', icon:'🏆', title:'Equity Domain — National Best Tier',
+     body:'Score <strong>233.5/260 (89.8%)</strong> · Grade <strong>UTTAM-1</strong>. DNH&DD has one of the most equitable school systems in India — surpassing Punjab and Kerala. Strong gender parity, CWSN inclusion, equitable SC/ST/Minority access.'},
+    {type:'strength', icon:'🚀', title:'Massive Learning Outcomes Jump (+134%)',
+     body:'LO scores leapt from <strong>42.7 → 100.0</strong> in one year — the biggest internal turnaround. Reflects FLN focus &amp; PARAKH Rashtriya Sarvekshan 2024 participation.'},
+    {type:'strength', icon:'🏗️', title:'Infrastructure: Top National Performer',
+     body:'Score <strong>127.6/190 (67.2%)</strong> · Grade <strong>UTTAM-3</strong>. Beats Punjab &amp; Kerala on infrastructure. ICT labs, smart classes, basic facilities are well-deployed.'},
+    {type:'win', icon:'📈', title:'2nd Highest Improvement Nationally',
+     body:'+91.0 points YoY — second only to Kerala (+93.5). Outpaced every other state/UT in pure improvement velocity.'}
+  ],
+  right: [
+    {type:'risk', icon:'📉', title:'Learning Outcomes: Still PRACHESTA-2',
+     body:'Despite +134% jump, LO is at <strong>41.7% of optimal</strong> — lowest %-achievement. Grades 3, 6, 9 in Language/Math/Science still lag Punjab (150.4) &amp; Kerala (140.3). 240 pts weight = biggest opportunity.'},
+    {type:'risk', icon:'🏛️', title:'Governance Processes: 58.9% Achieved',
+     body:'Score <strong>76.6/130</strong>, PRACHESTA-1. Below Chandigarh (83.2), Maharashtra (81.7), Punjab (79.1). Digital attendance, fund timing, Vidyanjali need acceleration.'},
+    {type:'opportunity', icon:'📚', title:'Teacher Education: Slight Decline',
+     body:'TE&amp;T dropped <strong>82.6 → 79.4 (-3.9% YoY)</strong>, UTKARSH → UTTAM-2. Only domain to regress. Diagnostic needed on qualifications, in-service training, DIET capacity.'},
+    {type:'opportunity', icon:'♿', title:'Access: Room for Marginal Gains',
+     body:'Score <strong>66.1/80 (82.6%)</strong> · UTTAM-1. Strong but room in NER (Higher Sec) and Retention (Secondary). Kerala at 75.3 shows ceiling.'}
+  ]
+};
+
+// =====================================================
+// FILTER STATE
+// =====================================================
+const filters = {
+  year: '2024-25',
+  viewMode: 'absolute',
+  states: ['Chandigarh','Punjab','Kerala','National Avg'],  // includes DNH&DD implicitly
+  domains: ['LO','A','IF','E','GP','TET'],
+  radarYears: ['2022-23','2023-24','2024-25'],
+  region: 'all',
+  grade: 'all',
+  improvement: 'all',
+  scoreMin: 400,
+  scoreMax: 800,
+  search: '',
+  improverMin: 0,
+  insightType: 'all',
+  sortKey: 'score25',
+  sortDir: 'desc',
+  domainSortKey: '2024-25',
+  domainSortDir: 'desc'
+};
+
+const charts = {};
+
+// =====================================================
+// UTILS
+// =====================================================
+function fmt(n, dec=1) { return typeof n === 'number' ? n.toFixed(dec) : n; }
+
+function getDomainsActive() {
+  return Object.entries(DNHDD.domains).filter(([n,d]) => filters.domains.includes(d.key));
+}
+
+function getActiveStateList() {
+  // DNH&DD always included
+  return ['DNH&DD', ...filters.states.filter(s => s !== 'DNH&DD' && s !== 'National Avg'), ...(filters.states.includes('National Avg') ? ['National Avg'] : [])];
+}
+
+// =====================================================
+// FILTER UI WIRING
+// =====================================================
+function wirePillGroup(containerId, filterKey, multi=false) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    if (multi) {
+      pill.classList.toggle('active');
+      const vals = Array.from(c.querySelectorAll('.filter-pill.active')).map(p => p.dataset.val);
+      filters[filterKey] = vals;
+    } else {
+      c.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      filters[filterKey] = pill.dataset.val;
+    }
+    renderAll();
+  });
+}
+
+function wireStateCheckboxes() {
+  const c = document.getElementById('filterStates');
+  c.addEventListener('click', e => {
+    const lbl = e.target.closest('.checkbox-pill');
+    if (!lbl) return;
+    lbl.classList.toggle('checked');
+    const st = lbl.dataset.state;
+    if (lbl.classList.contains('checked')) {
+      if (!filters.states.includes(st)) filters.states.push(st);
+    } else {
+      filters.states = filters.states.filter(s => s !== st);
+    }
+    renderAll();
+  });
+}
+
+function wireDomainCheckboxes() {
+  // Build checkboxes dynamically
+  const c = document.getElementById('filterDomains');
+  const html = Object.values(DNHDD.domains).map(d =>
+    `<label class="checkbox-pill checked" data-key="${d.key}"><span class="dot" style="background:#1e4e9a"></span>${d.short}</label>`
+  ).join('');
+  c.innerHTML = `<span style="font-size:11px;font-weight:700;color:#5a6b85;text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;">Show Domains:</span>` + html;
+  c.addEventListener('click', e => {
+    const lbl = e.target.closest('.checkbox-pill');
+    if (!lbl) return;
+    lbl.classList.toggle('checked');
+    filters.domains = Array.from(c.querySelectorAll('.checkbox-pill.checked')).map(p => p.dataset.key);
+    renderAll();
+  });
+}
+
+function wireSortable(tableId, sortKeyAttr, dirAttr) {
+  const t = document.getElementById(tableId);
+  if (!t) return;
+  t.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sortKey;
+      if (filters[sortKeyAttr] === key) {
+        filters[dirAttr] = filters[dirAttr] === 'desc' ? 'asc' : 'desc';
+      } else {
+        filters[sortKeyAttr] = key;
+        filters[dirAttr] = 'desc';
+      }
+      t.querySelectorAll('th.sortable').forEach(h => h.classList.remove('sort-asc','sort-desc'));
+      th.classList.add('sort-' + filters[dirAttr]);
+      renderAll();
+    });
+  });
+}
+
+function resetAllFilters() {
+  filters.year = '2024-25';
+  filters.viewMode = 'absolute';
+  filters.states = ['Chandigarh','Punjab','Kerala','National Avg'];
+  filters.domains = ['LO','A','IF','E','GP','TET'];
+  filters.radarYears = ['2022-23','2023-24','2024-25'];
+  filters.region = 'all';
+  filters.grade = 'all';
+  filters.improvement = 'all';
+  filters.scoreMin = 400;
+  filters.scoreMax = 800;
+  filters.search = '';
+  filters.improverMin = 0;
+  filters.insightType = 'all';
+  filters.sortKey = 'score25';
+  filters.sortDir = 'desc';
+
+  // Reset UI
+  document.querySelectorAll('#filterYear .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === '2024-25'));
+  document.querySelectorAll('#filterViewMode .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === 'absolute'));
+  document.querySelectorAll('#filterStates .checkbox-pill').forEach(p => p.classList.toggle('checked', filters.states.includes(p.dataset.state)));
+  document.querySelectorAll('#filterDomains .checkbox-pill').forEach(p => p.classList.add('checked'));
+  document.querySelectorAll('#filterRadarYears .filter-pill').forEach(p => p.classList.add('active'));
+  document.getElementById('filterRegion').value = 'all';
+  document.getElementById('filterGrade').value = 'all';
+  document.querySelectorAll('#filterImpr .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === 'all'));
+  document.getElementById('scoreMin').value = 400;
+  document.getElementById('scoreMax').value = 800;
+  document.getElementById('searchState').value = '';
+  document.getElementById('improverMin').value = 0;
+  document.querySelectorAll('#filterInsightType .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === 'all'));
+
+  renderAll();
+}
+
+function renderActiveFilters() {
+  const strip = document.getElementById('activeFiltersStrip');
+  const chips = [];
+  if (filters.year !== '2024-25') chips.push(`<span class="active-filter-chip">📅 Year: ${filters.year} <span class="x" onclick="filters.year='2024-25';document.querySelectorAll('#filterYear .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === '2024-25'));renderAll()">✕</span></span>`);
+  if (filters.viewMode !== 'absolute') chips.push(`<span class="active-filter-chip">👁 Mode: ${filters.viewMode === 'optimal' ? '% of Optimal' : 'YoY Change'} <span class="x" onclick="filters.viewMode='absolute';document.querySelectorAll('#filterViewMode .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === 'absolute'));renderAll()">✕</span></span>`);
+  if (filters.region !== 'all') chips.push(`<span class="active-filter-chip">🗺 Region: ${filters.region} <span class="x" onclick="filters.region='all';document.getElementById('filterRegion').value='all';renderAll()">✕</span></span>`);
+  if (filters.grade !== 'all') chips.push(`<span class="active-filter-chip">🏷 Grade: ${filters.grade} <span class="x" onclick="filters.grade='all';document.getElementById('filterGrade').value='all';renderAll()">✕</span></span>`);
+  if (filters.improvement !== 'all') chips.push(`<span class="active-filter-chip">📊 ${filters.improvement === 'up' ? 'Improvers' : 'Decliners'} <span class="x" onclick="filters.improvement='all';document.querySelectorAll('#filterImpr .filter-pill').forEach(p => p.classList.toggle('active', p.dataset.val === 'all'));renderAll()">✕</span></span>`);
+  if (filters.scoreMin > 400 || filters.scoreMax < 800) chips.push(`<span class="active-filter-chip">📏 Score: ${filters.scoreMin}-${filters.scoreMax}</span>`);
+  if (filters.search) chips.push(`<span class="active-filter-chip">🔍 "${filters.search}" <span class="x" onclick="filters.search='';document.getElementById('searchState').value='';renderAll()">✕</span></span>`);
+  if (filters.domains.length < 6) chips.push(`<span class="active-filter-chip">🎯 ${filters.domains.length}/6 domains shown</span>`);
+  strip.innerHTML = chips.length ? `<span style="font-size:11px;color:#5a6b85;font-weight:600;">ACTIVE:</span>` + chips.join('') : '';
+}
+
+// =====================================================
+// SWITCH TAB
+// =====================================================
+function switchTab(e, id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  e.currentTarget.classList.add('active');
+  setTimeout(() => Object.values(charts).forEach(c => c && c.resize && c.resize()), 100);
+}
+
+// =====================================================
+// RENDERERS
+// =====================================================
+function renderKPIs() {
+  // KPI based on year filter
+  const y = filters.year === 'all' ? '2024-25' : filters.year;
+  const sc = DNHDD.scores[y];
+  const grade = DNHDD.grades[y];
+  const rank = DNHDD.ranks[y];
+  const natAvg = NATIONAL_AVG[y];
+  const sorted = Object.entries(STATE_SCORES).sort((a,b) => b[1][y] - a[1][y]);
+  const topper = sorted[0];
+
+  // YoY delta
+  let yoyText = '+91.0 pts YoY', yoyCls = 'up';
+  if (y === '2022-23') { yoyText = 'Baseline'; yoyCls = 'neutral'; }
+  else if (y === '2023-24') { yoyText = '+5.6 pts YoY'; yoyCls = 'up'; }
+
+  const gradeMove = (y === '2024-25') ? '⬆ Upgraded from PRACHESTA-3' : (y === '2023-24' ? 'Same as 2022-23' : 'Baseline grade');
+
+  const kpis = [
+    {cls:'primary', label:`Overall PGI Score (${y})`, value: sc.toFixed(1), suffix:'/1000', delta:yoyText, deltaCls:yoyCls, sub:`${(sc/1000*100).toFixed(1)}% of optimal`},
+    {cls:'success', label:'Grade', value: grade, valueSize: '20px', delta: gradeMove, deltaCls: y==='2024-25' ? 'up' : 'neutral', sub:`Score range: ${grade==='PRACHESTA-2'?'641-700':grade==='PRACHESTA-3'?'581-640':'varies'}`},
+    {cls:'info', label:'National Rank', value:`#${rank}`, suffix:'of 36', delta: (y==='2024-25'?'⬆ Up 3 ranks':'baseline'), deltaCls: y==='2024-25' ? 'up' : 'neutral', sub:`Top ${(rank/36*100).toFixed(0)}% nationally`},
+    {cls:'warning', label:'vs National Avg', value:`+${(sc-natAvg).toFixed(1)}`, suffix:'pts', delta:`⬆ ${((sc-natAvg)/natAvg*100).toFixed(1)}% above avg`, deltaCls:'up', sub:`Nat'l Avg: ${natAvg.toFixed(1)}`},
+    {cls:'danger', label:'Gap to Topper', value:`−${(topper[1][y]-sc).toFixed(1)}`, suffix:'pts', delta:`vs ${topper[0]} (${topper[1][y].toFixed(1)})`, deltaCls:'neutral', sub:`${((topper[1][y]-sc)/topper[1][y]*100).toFixed(1)}% gap`}
+  ];
+
+  document.getElementById('kpiGridOverview').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" ${k.valueSize ? `style="font-size:${k.valueSize}"` : ''}>${k.value}${k.suffix ? `<span class="kpi-suffix">${k.suffix}</span>` : ''}</div>
+      <div class="kpi-delta ${k.deltaCls}">${k.delta}</div>
+      <div class="kpi-subtext">${k.sub}</div>
+    </div>
+  `).join('');
+
+  // Trends KPIs
+  document.getElementById('kpiGridTrends').innerHTML = `
+    <div class="kpi-card success"><div class="kpi-label">3-Year Score Growth</div><div class="kpi-value">+96.6<span class="kpi-suffix">pts</span></div><div class="kpi-delta up">⬆ +16.5% growth</div><div class="kpi-subtext">FY 22-23 → FY 24-25</div></div>
+    <div class="kpi-card primary"><div class="kpi-label">Largest YoY Jump</div><div class="kpi-value">+91.0<span class="kpi-suffix">pts</span></div><div class="kpi-delta up">⬆ In 2024-25</div><div class="kpi-subtext">vs +5.6 pts in 2023-24</div></div>
+    <div class="kpi-card info"><div class="kpi-label">Improvement Rank</div><div class="kpi-value">#2<span class="kpi-suffix">of 36</span></div><div class="kpi-subtext">Among biggest improvers FY24→FY25</div></div>
+    <div class="kpi-card warning"><div class="kpi-label">Grade Transitions</div><div class="kpi-value">2</div><div class="kpi-subtext">PRACHESTA-3 → PRACHESTA-3 → PRACHESTA-2</div></div>
+  `;
+
+  // Gaps KPIs
+  document.getElementById('kpiGridGaps').innerHTML = `
+    <div class="kpi-card warning"><div class="kpi-label">Gap to Topper</div><div class="kpi-value">55.9<span class="kpi-suffix">pts</span></div><div class="kpi-subtext">Chandigarh: 739.1</div></div>
+    <div class="kpi-card danger"><div class="kpi-label">Gap to Optimal (1000)</div><div class="kpi-value">316.8<span class="kpi-suffix">pts</span></div><div class="kpi-subtext">31.7% headroom to UTKARSH</div></div>
+    <div class="kpi-card success"><div class="kpi-label">Lead over Nat'l Avg</div><div class="kpi-value">+96.1<span class="kpi-suffix">pts</span></div><div class="kpi-subtext">National Avg: 587.1</div></div>
+    <div class="kpi-card info"><div class="kpi-label">Distance to PRACHESTA-1</div><div class="kpi-value">17.8<span class="kpi-suffix">pts</span></div><div class="kpi-subtext">Threshold: 701</div></div>
+  `;
+}
+
+function renderJourney() {
+  const c = document.getElementById('journeyContainer');
+  const years = ['2022-23','2023-24','2024-25'];
+  let html = '';
+  years.forEach((y, i) => {
+    const sc = DNHDD.scores[y];
+    const grade = DNHDD.grades[y];
+    const rank = DNHDD.ranks[y];
+    const isHi = (y === filters.year || filters.year === 'all');
+    const bgGrad = i < 2 ? 'linear-gradient(135deg,#95d5b2,#74c476)' : 'linear-gradient(135deg,#1e4e9a,#2e7dd1)';
+    html += `<div class="journey-step" style="${isHi?'':'opacity:0.5'}">
+      <div class="year">${y}</div>
+      <div class="score-circle" style="background:${bgGrad};${i===2?'box-shadow:0 8px 20px rgba(30,78,154,0.4)':''}">
+        <div class="score-num">${sc.toFixed(1)}</div><div class="score-sub">/1000</div>
+      </div>
+      <div class="grade-label ${GRADE_CLASS[grade]}">${grade}</div>
+      <div class="rank-label" ${i===2?'style="color:#1e4e9a;font-weight:700"':''}>Rank #${rank} · ${(sc/1000*100).toFixed(1)}% optimal</div>
+    </div>`;
+    if (i < 2) {
+      const delta = DNHDD.scores[years[i+1]] - sc;
+      html += `<div class="journey-arrow ${delta > 10 ? 'up':''}">${delta > 10 ? '⇪' : '→'}<br><span style="font-size:11px;color:${delta>0?'#00a86b':'#c0392b'};font-weight:${delta>10?'700':'600'};">${delta>0?'+':''}${delta.toFixed(1)} pts</span></div>`;
+    }
+  });
+  c.innerHTML = html;
+}
+
+function renderTopStatesTable() {
+  const y = filters.year === 'all' ? '2024-25' : filters.year;
+  document.getElementById('topStatesYr').textContent = '(' + y + ')';
+  const sorted = Object.entries(STATE_SCORES).sort((a,b) => b[1][y] - a[1][y]).slice(0, 8);
+  let html = `<thead><tr><th>Rank</th><th>State/UT</th><th class="num">Score</th></tr></thead><tbody>`;
+  sorted.forEach((row, i) => {
+    const rank = i + 1;
+    const cls = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-other';
+    const isDn = row[0] === 'DNH&DD';
+    html += `<tr ${isDn?'class="highlight"':''}><td><span class="rank-badge ${cls}">${rank}</span></td><td>${isDn?'<strong>':''}${row[0]}${isDn?'</strong>':''}</td><td class="num">${isDn?'<strong>':''}${row[1][y].toFixed(1)}${isDn?'</strong>':''}</td></tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('topStatesTable').innerHTML = html;
+}
+
+function renderDomainCards() {
+  const y = filters.year === 'all' ? '2024-25' : filters.year;
+  document.getElementById('domainSnapshotYr').textContent = '(' + y + ')';
+  const grid = document.getElementById('domainGrid');
+  let html = '';
+  Object.entries(DNHDD.domains).forEach(([name, d]) => {
+    const dimmed = !filters.domains.includes(d.key);
+    const val = d[y];
+    const pct = (val / d.max) * 100;
+    const prevYear = y === '2022-23' ? null : (y === '2023-24' ? '2022-23' : '2023-24');
+    const yoyAbs = prevYear ? (val - d[prevYear]) : 0;
+    const yoyPct = prevYear ? (yoyAbs / d[prevYear]) * 100 : 0;
+    const progClass = pct >= 75 ? 'high' : (pct >= 50 ? 'medium' : 'low');
+    let trendIcon = '<span class="trend-flat">— Baseline</span>';
+    if (prevYear) {
+      trendIcon = yoyAbs > 0.5 ? `<span class="trend-up">▲ +${yoyPct.toFixed(1)}%</span>`
+                : yoyAbs < -0.5 ? `<span class="trend-down">▼ ${yoyPct.toFixed(1)}%</span>`
+                : '<span class="trend-flat">▬ flat</span>';
+    }
+    html += `<div class="domain-card ${dimmed?'dimmed':''}">
+      <div class="domain-name">${name}</div>
+      <div class="domain-score-row"><span class="domain-score">${val.toFixed(1)}</span><span class="domain-max">/ ${d.max}</span></div>
+      <div class="progress-bar"><div class="progress-fill ${progClass}" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#6b7a8f;"><span>${pct.toFixed(1)}% of optimal</span></div>
+      <span class="grade-pill ${y==='2024-25' ? GRADE_CLASS[d.grade] : ''}">${y==='2024-25' ? d.grade : ''}</span>
+      <div class="domain-trend"><span>YoY: ${trendIcon}</span></div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+
+function renderYoYTable() {
+  const tb = document.getElementById('yoyTable');
+  const rows = [
+    ['Overall PGI Score', DNHDD.scores['2022-23'], DNHDD.scores['2023-24'], DNHDD.scores['2024-25']],
+    ['National Rank', DNHDD.ranks['2022-23'], DNHDD.ranks['2023-24'], DNHDD.ranks['2024-25'], true]
+  ];
+  Object.entries(DNHDD.domains).forEach(([n, d]) => {
+    if (!filters.domains.includes(d.key)) return;
+    rows.push([n + ' (max ' + d.max + ')', d['2022-23'], d['2023-24'], d['2024-25']]);
+  });
+  rows.push(['National Average (overall)', NATIONAL_AVG['2022-23'], NATIONAL_AVG['2023-24'], NATIONAL_AVG['2024-25']]);
+  let html = '';
+  rows.forEach(r => {
+    const isRank = r[4] === true;
+    const delta = isRank ? (r[1] - r[3]) : (r[3] - r[1]);
+    const pct = isRank ? '' : ((r[3]-r[1])/r[1]*100).toFixed(1) + '%';
+    const dTxt = isRank ? (delta > 0 ? '+'+delta+' ranks' : delta+' ranks') : (delta>0?'+':'')+delta.toFixed(1);
+    const cls = delta > 0 ? 'trend-up' : delta < 0 ? 'trend-down' : '';
+    html += `<tr><td>${r[0]}</td><td class="num">${typeof r[1]==='number'?r[1].toFixed(1):r[1]}</td><td class="num">${typeof r[2]==='number'?r[2].toFixed(1):r[2]}</td><td class="num"><strong>${typeof r[3]==='number'?r[3].toFixed(1):r[3]}</strong></td><td class="num ${cls}">${dTxt}</td><td class="num">${pct}</td></tr>`;
+  });
+  tb.innerHTML = html;
+}
+
+function renderDomainTable() {
+  let entries = Object.entries(DNHDD.domains)
+    .filter(([n, d]) => filters.domains.includes(d.key))
+    .map(([n, d]) => ({
+      name: n, max: d.max,
+      '2022-23': d['2022-23'], '2023-24': d['2023-24'], '2024-25': d['2024-25'],
+      yoy: ((d['2024-25'] - d['2023-24']) / d['2023-24']) * 100,
+      pct: (d['2024-25'] / d.max) * 100,
+      grade: d.grade
+    }));
+  // Sort
+  const k = filters.domainSortKey, dir = filters.domainSortDir;
+  entries.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return dir === 'asc' ? av - bv : bv - av;
+  });
+  let html = '';
+  entries.forEach(d => {
+    const yoyText = (d.yoy >= 0 ? '+' : '') + d.yoy.toFixed(1) + '%';
+    const yoyClass = d.yoy >= 0 ? 'trend-up' : 'trend-down';
+    html += `<tr>
+      <td><strong>${d.name}</strong></td>
+      <td class="num">${d.max}</td>
+      <td class="num">${d['2022-23'].toFixed(1)}</td>
+      <td class="num">${d['2023-24'].toFixed(1)}</td>
+      <td class="num"><strong>${d['2024-25'].toFixed(1)}</strong></td>
+      <td class="num ${yoyClass}">${yoyText}</td>
+      <td class="num">${d.pct.toFixed(1)}%</td>
+      <td><span class="grade-pill ${GRADE_CLASS[d.grade]}">${d.grade}</span></td>
+    </tr>`;
+  });
+  document.getElementById('domainTableBody').innerHTML = html || '<tr><td colspan="8" class="empty-state">No domains selected. Activate at least one in filters.</td></tr>';
+}
+
+function renderDomainBars() {
+  const wrap = document.getElementById('domainBarComparisons');
+  const entries = Object.entries(DNHDD.domains).filter(([n,d]) => filters.domains.includes(d.key));
+  let html = '';
+  entries.forEach(([n, d]) => {
+    const pct = (d['2024-25']/d.max)*100;
+    html += `<div class="comparison-row">
+      <div class="comparison-name">${d.short}</div>
+      <div class="comparison-bar-container"><div class="comparison-bar dnhdd" style="width:${pct}%">${pct.toFixed(1)}%</div></div>
+      <div class="comparison-value">${d['2024-25'].toFixed(1)} / ${d.max}</div>
+    </div>`;
+  });
+  wrap.innerHTML = html || '<div class="empty-state">No domains selected.</div>';
+}
+
+function renderLeadership() {
+  const wrap = document.getElementById('leadership');
+  const domainsList = getDomainsActive().map(([n,d])=>d.key);
+  const labels = { LO:'Learning Outcomes', A:'Access', IF:'Infrastructure', E:'Equity', GP:'Governance', TET:'Teacher Education' };
+  const stateSet = ['DNH&DD', ...filters.states.filter(s => s !== 'National Avg' && STATE_DOMAINS_2425[s])];
+  if (stateSet.length < 2) {
+    wrap.innerHTML = '<div class="empty-state">Select at least 1 comparison state in the global filter.</div>';
+    return;
+  }
+  let html = '';
+  domainsList.forEach(dk => {
+    const ranked = stateSet.map(s => [s, STATE_DOMAINS_2425[s][dk]]).sort((a,b) => b[1] - a[1]);
+    const dnhPos = ranked.findIndex(r => r[0] === 'DNH&DD') + 1;
+    const medal = dnhPos === 1 ? '🥇' : dnhPos === 2 ? '🥈' : dnhPos === 3 ? '🥉' : '#' + dnhPos;
+    let cls = dnhPos <= 2 ? 'strength' : dnhPos === 3 ? 'win' : 'opportunity';
+    html += `<div class="insight-card ${cls}" style="padding:10px 14px;">
+      <h4>${medal} ${labels[dk]}: ${STATE_DOMAINS_2425['DNH&DD'][dk]}</h4>
+      <p style="font-size:12px;">Ranking among selected: ${ranked.map(r => r[0] + ' ' + r[1]).join(' · ')}</p>
+    </div>`;
+  });
+  wrap.innerHTML = html || '<div class="empty-state">No domains selected.</div>';
+}
+
+function renderRanking() {
+  // Get filter values from UI
+  filters.region = document.getElementById('filterRegion').value;
+  filters.grade = document.getElementById('filterGrade').value;
+  filters.scoreMin = parseInt(document.getElementById('scoreMin').value);
+  filters.scoreMax = parseInt(document.getElementById('scoreMax').value);
+  filters.search = document.getElementById('searchState').value.toLowerCase();
+
+  document.getElementById('scoreMinDisplay').textContent = filters.scoreMin;
+  document.getElementById('scoreMaxDisplay').textContent = filters.scoreMax;
+
+  let rows = Object.entries(STATE_SCORES).map(([state, d]) => ({
+    state, score25: d['2024-25'], score24: d['2023-24'], delta: d['2024-25'] - d['2023-24'],
+    grade: d.grade25, region: d.region
+  }));
+
+  // Sort overall first to assign global rank
+  rows.sort((a, b) => b.score25 - a.score25);
+  rows.forEach((r, i) => r.globalRank = i + 1);
+
+  // Filter
+  if (filters.region !== 'all') rows = rows.filter(r => r.region === filters.region);
+  if (filters.grade !== 'all') rows = rows.filter(r => r.grade === filters.grade);
+  if (filters.improvement === 'up') rows = rows.filter(r => r.delta > 0);
+  if (filters.improvement === 'down') rows = rows.filter(r => r.delta < 0);
+  rows = rows.filter(r => r.score25 >= filters.scoreMin && r.score25 <= filters.scoreMax);
+  if (filters.search) rows = rows.filter(r => r.state.toLowerCase().includes(filters.search));
+
+  // Sort by sort filter
+  const k = filters.sortKey, dir = filters.sortDir;
+  rows.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return dir === 'asc' ? av - bv : bv - av;
+  });
+
+  let html = '';
+  rows.forEach(r => {
+    const dCls = r.delta > 0 ? 'trend-up' : r.delta < 0 ? 'trend-down' : 'trend-flat';
+    const dTxt = (r.delta >= 0 ? '+' : '') + r.delta.toFixed(1);
+    const rkCls = r.globalRank === 1 ? 'rank-1' : r.globalRank === 2 ? 'rank-2' : r.globalRank === 3 ? 'rank-3' : 'rank-other';
+    const isDn = r.state === 'DNH&DD';
+    html += `<tr ${isDn?'class="highlight"':''}>
+      <td><span class="rank-badge ${rkCls}">${r.globalRank}</span></td>
+      <td>${r.state}</td>
+      <td><span style="font-size:11px;padding:2px 8px;background:#e3e8ef;border-radius:8px;color:#5a6b85;">${r.region}</span></td>
+      <td class="num"><strong>${r.score25.toFixed(1)}</strong></td>
+      <td class="num">${r.score24.toFixed(1)}</td>
+      <td class="num ${dCls}">${dTxt}</td>
+      <td><span class="grade-pill ${GRADE_CLASS[r.grade]}">${r.grade}</span></td>
+    </tr>`;
+  });
+  document.getElementById('rankingBody').innerHTML = html || '<tr><td colspan="7" class="empty-state">No states match the active filters.</td></tr>';
+  document.getElementById('rankingCount').textContent = `${rows.length} of 36 states shown`;
+}
+
+function renderGradeLadder() {
+  const grades = [
+    ['UTKARSH','941-1000','grade-utkarsh','NIL'],
+    ['UTTAM-1','881-940','grade-uttam1','NIL'],
+    ['UTTAM-2','821-880','grade-uttam2','NIL'],
+    ['UTTAM-3','761-820','grade-uttam3','NIL'],
+    ['PRACHESTA-1','701-760','grade-prachesta1','2 (Chandigarh, Punjab)'],
+    ['PRACHESTA-2','641-700','grade-prachesta2','6 (incl. DNH&DD)'],
+    ['PRACHESTA-3','581-640','grade-prachesta3','9'],
+    ['AKANSHI-1','521-580','grade-akanshi1','15'],
+    ['AKANSHI-2','461-520','grade-akanshi2','3'],
+    ['AKANSHI-3','401-460','grade-akanshi3','1 (Meghalaya)']
+  ];
+  let html = '<table class="data-table"><thead><tr><th>Grade</th><th>Score Range</th><th>States/UTs (FY25)</th><th></th></tr></thead><tbody>';
+  grades.forEach(g => {
+    const isDn = g[0] === 'PRACHESTA-2';
+    html += `<tr ${isDn?'class="highlight"':''}>
+      <td><span class="grade-pill ${g[2]}">${g[0]}</span></td>
+      <td>${g[1]}</td>
+      <td>${g[3]}</td>
+      <td>${isDn ? '<strong style="color:#1e4e9a;">⬅ DNH&DD</strong>' : ''}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('gradeLadder').innerHTML = html;
+}
+
+function renderInsights() {
+  const f = filters.insightType;
+  ['left','right'].forEach(side => {
+    const items = INSIGHTS_DATA[side];
+    const html = items.filter(it => f === 'all' || it.type === f).map(it => `
+      <div class="insight-card ${it.type}">
+        <h4>${it.icon} ${it.title}</h4>
+        <p>${it.body}</p>
+      </div>
+    `).join('') || '<div class="empty-state">No insights match this filter.</div>';
+    document.getElementById('insights' + (side === 'left' ? 'Left' : 'Right')).innerHTML = html;
+  });
+}
+
+// =====================================================
+// CHARTS
+// =====================================================
+const chartOpts = {
+  responsive: true, maintainAspectRatio: false,
+  interaction: { intersect: false, mode: 'index' },
+  plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 11 }, usePointStyle: true } } }
+};
+
+function destroyChart(name) {
+  if (charts[name]) { charts[name].destroy(); delete charts[name]; }
+}
+
+function buildTrendChart() {
+  destroyChart('trend');
+  const ctx = document.getElementById('trendChart');
+  if (!ctx) return;
+  const years = ['2022-23', '2023-24', '2024-25'];
+  const datasets = [{
+    label: 'DNH&DD', data: years.map(y => DNHDD.scores[y]),
+    borderColor: '#1e4e9a', backgroundColor: 'rgba(30,78,154,0.12)',
+    borderWidth: 3, fill: true, tension: 0.3, pointRadius: 6
+  }];
+  filters.states.forEach(s => {
+    if (s === 'National Avg') {
+      datasets.push({ label:'Nat\'l Avg', data: years.map(y => NATIONAL_AVG[y]), borderColor:'#8395a7', borderDash:[6,6], borderWidth: 2, fill:false, tension: 0.3, pointRadius: 3 });
+    } else if (STATE_SCORES[s]) {
+      datasets.push({ label:s, data: years.map(y => STATE_SCORES[s][y]), borderColor: STATE_COLORS[s] || '#999', borderWidth: 2, fill:false, tension: 0.3, pointRadius: 4 });
+    }
+  });
+  charts.trend = new Chart(ctx, {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: { ...chartOpts, scales: { y: { suggestedMin: 400, suggestedMax: 800 } } }
+  });
+}
+
+function buildTrendComparisonChart() {
+  destroyChart('trendComp');
+  const ctx = document.getElementById('trendComparisonChart');
+  if (!ctx) return;
+  const years = ['2022-23', '2023-24', '2024-25'];
+  const datasets = [{ label:'DNH&DD', data: years.map(y => DNHDD.scores[y]),
+    borderColor:'#1e4e9a', backgroundColor:'rgba(30,78,154,0.12)',
+    borderWidth: 4, fill: true, tension: 0.3, pointRadius: 7 }];
+  filters.states.forEach(s => {
+    if (s === 'National Avg') datasets.push({ label:'Nat\'l Avg', data: years.map(y => NATIONAL_AVG[y]), borderColor:'#8395a7', borderDash:[6,6], borderWidth: 2, fill:false, tension: 0.3, pointRadius: 4 });
+    else if (STATE_SCORES[s]) datasets.push({ label:s, data: years.map(y => STATE_SCORES[s][y]), borderColor: STATE_COLORS[s] || '#999', borderWidth: 2.5, fill: false, tension: 0.3, pointRadius: 5 });
+  });
+  charts.trendComp = new Chart(ctx, {
+    type:'line', data:{ labels:years, datasets },
+    options:{ ...chartOpts, scales:{ y:{ suggestedMin:400, suggestedMax:800 } } }
+  });
+}
+
+function buildDomainYoYChart() {
+  destroyChart('domainYoY');
+  const ctx = document.getElementById('domainYoYChart');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  const labels = entries.map(([n,d]) => d.short);
+  const pcts = entries.map(([n,d]) => +((d['2024-25'] - d['2023-24']) / d['2023-24'] * 100).toFixed(1));
+  charts.domainYoY = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'YoY % Change',
+        data: pcts,
+        backgroundColor: pcts.map(p => p > 0 ? 'rgba(0,168,107,0.8)' : 'rgba(231,76,60,0.8)'),
+        borderColor: pcts.map(p => p > 0 ? '#00a86b' : '#e74c3c'),
+        borderWidth: 2, borderRadius: 6
+      }]
+    },
+    options: { ...chartOpts, plugins:{ legend:{display:false }, tooltip:{ callbacks:{ label: c => c.parsed.y + '%' }}}, scales:{ y:{ticks:{ callback: v => v + '%' }}} }
+  });
+}
+
+function buildImproversChart() {
+  destroyChart('improvers');
+  filters.improverMin = parseInt(document.getElementById('improverMin').value);
+  document.getElementById('improverMinVal').textContent = filters.improverMin;
+  const data = IMPROVERS_DATA.filter(([s,d]) => d >= filters.improverMin).slice(0, 12);
+  const ctx = document.getElementById('improversChart');
+  if (!ctx) return;
+  charts.improvers = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d[0]),
+      datasets: [{
+        label: 'Δ FY24 → FY25', data: data.map(d => d[1]),
+        backgroundColor: data.map(d => d[0] === 'DNH&DD' ? '#1e4e9a' : 'rgba(149,213,178,0.85)'),
+        borderColor: data.map(d => d[0] === 'DNH&DD' ? '#0d2e5c' : '#74c476'),
+        borderWidth: 2, borderRadius: 6
+      }]
+    },
+    options: { ...chartOpts, indexAxis: 'y', plugins:{ legend:{ display:false }}, scales:{ x:{ title:{ display:true, text:'Δ Points' }}}}
+  });
+}
+
+function updateImprovers() { buildImproversChart(); }
+
+function buildRadarChart() {
+  destroyChart('radar');
+  const ctx = document.getElementById('radarChart');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  if (entries.length < 3) {
+    if (charts.radar) charts.radar.destroy();
+    return;
+  }
+  const labels = entries.map(([n,d]) => d.short);
+  const yearColors = { '2022-23':'#c2c8d3', '2023-24':'#74c476', '2024-25':'#1e4e9a' };
+  const yearWidths = { '2022-23': 2, '2023-24': 2, '2024-25': 3 };
+  const yearFills = { '2022-23':'rgba(194,200,211,0.18)', '2023-24':'rgba(116,196,118,0.22)', '2024-25':'rgba(30,78,154,0.32)' };
+  const datasets = filters.radarYears.map(y => ({
+    label: y,
+    data: entries.map(([n,d]) => +((d[y] / d.max) * 100).toFixed(1)),
+    borderColor: yearColors[y], backgroundColor: yearFills[y],
+    borderWidth: yearWidths[y], pointRadius: 4
+  }));
+  charts.radar = new Chart(ctx, {
+    type: 'radar',
+    data: { labels, datasets },
+    options: { ...chartOpts, scales: { r: { min: 0, max: 100, ticks: { stepSize: 20, callback: v => v + '%' }, pointLabels: { font: { size: 11, weight: '600' } } } } }
+  });
+}
+
+function buildDomainEvolutionChart() {
+  destroyChart('evo');
+  const ctx = document.getElementById('domainEvolutionChart');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  const palette = ['#1e4e9a','#00a86b','#ff9800','#6c5ce7','#e74c3c','#0abde3'];
+  const years = ['2022-23', '2023-24', '2024-25'];
+
+  const datasets = entries.map(([n, d], i) => {
+    let data;
+    if (filters.viewMode === 'absolute') data = years.map(y => d[y]);
+    else if (filters.viewMode === 'optimal') data = years.map(y => +((d[y]/d.max)*100).toFixed(1));
+    else data = [null, +(((d['2023-24']-d['2022-23'])/d['2022-23'])*100).toFixed(1), +(((d['2024-25']-d['2023-24'])/d['2023-24'])*100).toFixed(1)];
+    return {
+      label: d.short, data,
+      borderColor: palette[i % palette.length], backgroundColor: palette[i % palette.length] + '22',
+      borderWidth: 2.5, fill: false, tension: 0.3, pointRadius: 5
+    };
+  });
+
+  let yMin, yMax, yTitle;
+  if (filters.viewMode === 'absolute') { yMin = 0; yMax = 260; yTitle = 'Score (absolute)'; }
+  else if (filters.viewMode === 'optimal') { yMin = 0; yMax = 100; yTitle = '% of Optimal'; }
+  else { yMin = -20; yMax = 150; yTitle = '% YoY change'; }
+
+  charts.evo = new Chart(ctx, {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: { ...chartOpts, scales: { y: { min: yMin, max: yMax, title: { display: true, text: yTitle }, ticks: { callback: v => filters.viewMode === 'absolute' ? v : v + '%' } } } }
+  });
+}
+
+function buildStateCompareChart() {
+  destroyChart('stateComp');
+  const ctx = document.getElementById('stateCompareChart');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  const dKeys = entries.map(([n,d]) => d.key);
+  const labels = entries.map(([n,d]) => `${d.short} (${d.max})`);
+  const states = ['DNH&DD', ...filters.states.filter(s => s !== 'National Avg' && STATE_DOMAINS_2425[s])];
+  if (filters.states.includes('National Avg') && STATE_DOMAINS_2425['National Avg']) states.push('National Avg');
+
+  const datasets = states.map(s => {
+    const d = STATE_DOMAINS_2425[s] || {};
+    return {
+      label: s,
+      data: dKeys.map(k => d[k] || 0),
+      backgroundColor: s === 'DNH&DD' ? STATE_COLORS[s] : (STATE_COLORS[s] || '#999') + 'cc',
+      borderColor: STATE_COLORS[s] || '#999',
+      borderWidth: s === 'DNH&DD' ? 3 : 1, borderRadius: 4
+    };
+  });
+  charts.stateComp = new Chart(ctx, {
+    type: 'bar', data: { labels, datasets },
+    options: { ...chartOpts, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function buildMultiRadar() {
+  destroyChart('multiRadar');
+  const ctx = document.getElementById('multiRadar');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  if (entries.length < 3) return;
+  const labels = entries.map(([n,d]) => d.short);
+  const states = ['DNH&DD', ...filters.states.filter(s => STATE_DOMAINS_2425[s])];
+  const datasets = states.map((s, i) => {
+    const d = STATE_DOMAINS_2425[s];
+    return {
+      label: s,
+      data: entries.map(([n, dom]) => +((d[dom.key] / dom.max) * 100).toFixed(1)),
+      borderColor: STATE_COLORS[s] || '#999',
+      backgroundColor: (STATE_COLORS[s] || '#999') + (s === 'DNH&DD' ? '40' : '15'),
+      borderWidth: s === 'DNH&DD' ? 3 : 2,
+      borderDash: s === 'National Avg' ? [5,5] : [],
+      pointRadius: s === 'DNH&DD' ? 5 : 3
+    };
+  });
+  charts.multiRadar = new Chart(ctx, {
+    type: 'radar', data: { labels, datasets },
+    options: { ...chartOpts, scales: { r: { min: 0, max: 100, ticks: { stepSize: 20, callback: v => v + '%' }, pointLabels: { font: { size: 11, weight: '600' } } } } }
+  });
+}
+
+function buildGapChart() {
+  destroyChart('gap');
+  const ctx = document.getElementById('gapChart');
+  if (!ctx) return;
+  const entries = getDomainsActive();
+  const labels = entries.map(([n,d]) => d.short);
+  const achieved = entries.map(([n,d]) => d['2024-25']);
+  const gap = entries.map(([n,d]) => d.max - d['2024-25']);
+  charts.gap = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Achieved (DNH&DD)', data: achieved, backgroundColor:'rgba(30,78,154,0.85)', borderColor:'#0d2e5c', borderWidth: 1, borderRadius: 4 },
+        { label:'Gap to Optimum', data: gap, backgroundColor:'rgba(231,76,60,0.65)', borderColor:'#c0392b', borderWidth: 1, borderRadius: 4 }
+      ]
+    },
+    options: { ...chartOpts, scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: 'Points' } } } }
+  });
+}
+
+// =====================================================
+// MASTER RENDER
+// =====================================================
+function renderAll() {
+  renderActiveFilters();
+  renderKPIs();
+  renderJourney();
+  renderTopStatesTable();
+  renderDomainCards();
+  renderYoYTable();
+  renderDomainTable();
+  renderDomainBars();
+  renderLeadership();
+  renderRanking();
+  renderGradeLadder();
+  renderInsights();
+  buildTrendChart();
+  buildTrendComparisonChart();
+  buildDomainYoYChart();
+  buildImproversChart();
+  buildRadarChart();
+  buildDomainEvolutionChart();
+  buildStateCompareChart();
+  buildMultiRadar();
+  buildGapChart();
+}
+
+// =====================================================
+// INIT
+// =====================================================
+wirePillGroup('filterYear', 'year');
+wirePillGroup('filterViewMode', 'viewMode');
+wirePillGroup('filterImpr', 'improvement');
+wirePillGroup('filterInsightType', 'insightType');
+wirePillGroup('filterRadarYears', 'radarYears', true);
+wireStateCheckboxes();
+wireDomainCheckboxes();
+wireSortable('domainTable', 'domainSortKey', 'domainSortDir');
+wireSortable('rankingTable', 'sortKey', 'sortDir');
+
+renderAll();
+</script>
+</body>
+</html>
